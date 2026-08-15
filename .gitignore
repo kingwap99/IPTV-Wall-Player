@@ -1,0 +1,17 @@
+.DS_Store
+DerivedData/
+build/
+build-*/
+releases/
+*.xcarchive
+*.ipa
+*.pkg
+*.dSYM
+*.mobileprovision
+*.provisionprofile
+*.p8
+*.pem
+*.key
+*.xcuserstate
+xcuserdata/
+

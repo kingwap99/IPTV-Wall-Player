@@ -1,0 +1,14 @@
+{
+  "layers" : [
+    {
+      "filename" : "Foreground.imagestacklayer"
+    },
+    {
+      "filename" : "Background.imagestacklayer"
+    }
+  ],
+  "info" : {
+    "author" : "com.neo99.GlobalNewsWallTV",
+    "version" : 1
+  }
+}

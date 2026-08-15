@@ -1,0 +1,463 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 77;
+	objects = {
+
+		A10000000000000000000001 /* GlobalNewsWallTVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* GlobalNewsWallTVApp.swift */; };
+		A10000000000000000000002 /* ChannelModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ChannelModel.swift */; };
+		A10000000000000000000003 /* PlayerSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* PlayerSurface.swift */; };
+		A10000000000000000000004 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* ContentView.swift */; };
+		A10000000000000000000005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* Assets.xcassets */; };
+		A10000000000000000000008 /* M3UPlaylistStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* M3UPlaylistStore.swift */; };
+		B10000000000000000000001 /* FocusNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* FocusNavigationTests.swift */; };
+		C10000000000000000000001 /* GlobalNewsWallTVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* GlobalNewsWallTVApp.swift */; };
+		C10000000000000000000002 /* ChannelModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ChannelModel.swift */; };
+		C10000000000000000000003 /* M3UPlaylistStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* M3UPlaylistStore.swift */; };
+		C10000000000000000000004 /* PlayerSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* PlayerSurface.swift */; };
+		C10000000000000000000005 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* ContentView.swift */; };
+		C10000000000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* Assets.xcassets */; };
+		D10000000000000000000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000001 /* Localizable.strings */; };
+		D10000000000000000000002 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000001 /* Localizable.strings */; };
+		D10000000000000000000003 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000006 /* PrivacyInfo.xcprivacy */; };
+		D10000000000000000000004 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000006 /* PrivacyInfo.xcprivacy */; };
+		E10000000000000000000001 /* GlobalNewsWallTVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* GlobalNewsWallTVApp.swift */; };
+		E10000000000000000000002 /* ChannelModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ChannelModel.swift */; };
+		E10000000000000000000003 /* M3UPlaylistStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* M3UPlaylistStore.swift */; };
+		E10000000000000000000004 /* PlayerSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* PlayerSurface.swift */; };
+		E10000000000000000000005 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* ContentView.swift */; };
+		E10000000000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* Assets.xcassets */; };
+		E10000000000000000000007 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000001 /* Localizable.strings */; };
+		E10000000000000000000008 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000006 /* PrivacyInfo.xcprivacy */; };
+
+		A20000000000000000000001 /* GlobalNewsWallTVApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalNewsWallTVApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* ChannelModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelModel.swift; sourceTree = "<group>"; };
+		A20000000000000000000003 /* PlayerSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSurface.swift; sourceTree = "<group>"; };
+		A20000000000000000000004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A20000000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A20000000000000000000006 /* GlobalNewsWallTV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GlobalNewsWallTV.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000007 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A20000000000000000000008 /* Go2RTCDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Go2RTCDiscovery.swift; sourceTree = "<group>"; };
+		A20000000000000000000009 /* GlobalNewsWallTV.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GlobalNewsWallTV.entitlements; sourceTree = "<group>"; };
+		A2000000000000000000000A /* HomeKitDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeKitDiscovery.swift; sourceTree = "<group>"; };
+		A2000000000000000000000B /* M3UPlaylistStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = M3UPlaylistStore.swift; sourceTree = "<group>"; };
+		B20000000000000000000001 /* FocusNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusNavigationTests.swift; sourceTree = "<group>"; };
+		B20000000000000000000002 /* GlobalNewsWallTVUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GlobalNewsWallTVUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C20000000000000000000001 /* IPTVWallMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IPTVWallMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C20000000000000000000002 /* MacInfo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = MacInfo.plist; sourceTree = "<group>"; };
+		D20000000000000000000001 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		D20000000000000000000005 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		D20000000000000000000006 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		E20000000000000000000001 /* IPTVWallPad.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IPTVWallPad.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E20000000000000000000002 /* iPadInfo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = iPadInfo.plist; sourceTree = "<group>"; };
+		E20000000000000000000003 /* iPad.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = iPad.entitlements; sourceTree = "<group>"; };
+
+		B90000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A40000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A50000000000000000000001;
+			remoteInfo = GlobalNewsWallTV;
+		};
+
+		A30000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A30000000000000000000002 /* GlobalNewsWallTV */,
+				B30000000000000000000001 /* GlobalNewsWallTVUITests */,
+				A30000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A30000000000000000000002 /* GlobalNewsWallTV */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000001 /* GlobalNewsWallTVApp.swift */,
+				A20000000000000000000002 /* ChannelModel.swift */,
+				A2000000000000000000000B /* M3UPlaylistStore.swift */,
+				A20000000000000000000009 /* GlobalNewsWallTV.entitlements */,
+				A20000000000000000000003 /* PlayerSurface.swift */,
+				A20000000000000000000004 /* ContentView.swift */,
+				A20000000000000000000005 /* Info.plist */,
+				C20000000000000000000002 /* MacInfo.plist */,
+				E20000000000000000000002 /* iPadInfo.plist */,
+				E20000000000000000000003 /* iPad.entitlements */,
+				A20000000000000000000007 /* Assets.xcassets */,
+				D30000000000000000000001 /* Localizable.strings */,
+				D20000000000000000000006 /* PrivacyInfo.xcprivacy */,
+			);
+			path = GlobalNewsWallTV;
+			sourceTree = "<group>";
+		};
+		A30000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000006 /* GlobalNewsWallTV.app */,
+				C20000000000000000000001 /* IPTVWallMac.app */,
+				E20000000000000000000001 /* IPTVWallPad.app */,
+				B20000000000000000000002 /* GlobalNewsWallTVUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B30000000000000000000001 /* GlobalNewsWallTVUITests */ = {
+			isa = PBXGroup;
+			children = (B20000000000000000000001 /* FocusNavigationTests.swift */);
+			path = GlobalNewsWallTVUITests;
+			sourceTree = "<group>";
+		};
+
+		A40000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					A50000000000000000000001 = {
+						CreatedOnToolsVersion = 27.0;
+						ProvisioningStyle = Automatic;
+						SystemCapabilities = {
+							com.apple.Push = {
+								enabled = 1;
+							};
+							com.apple.iCloud = {
+								enabled = 1;
+							};
+						};
+					};
+					B50000000000000000000001 = { CreatedOnToolsVersion = 27.0; ProvisioningStyle = Automatic; TestTargetID = A50000000000000000000001; };
+					C50000000000000000000001 = {
+						CreatedOnToolsVersion = 27.0;
+						ProvisioningStyle = Automatic;
+					};
+					E50000000000000000000001 = {
+						CreatedOnToolsVersion = 27.0;
+						ProvisioningStyle = Automatic;
+						SystemCapabilities = {
+							com.apple.Push = {
+								enabled = 1;
+							};
+							com.apple.iCloud = {
+								enabled = 1;
+							};
+						};
+					};
+				};
+			};
+			buildConfigurationList = A80000000000000000000001 /* Build configuration list for PBXProject */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base, "zh-Hant");
+			mainGroup = A30000000000000000000001;
+			productRefGroup = A30000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A50000000000000000000001 /* GlobalNewsWallTV */,
+				C50000000000000000000001 /* IPTVWallMac */,
+				E50000000000000000000001 /* IPTVWallPad */,
+				B50000000000000000000001 /* GlobalNewsWallTVUITests */,
+			);
+		};
+
+		A50000000000000000000001 /* GlobalNewsWallTV */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A80000000000000000000002 /* Build configuration list for PBXNativeTarget */;
+			buildPhases = (
+				A60000000000000000000001 /* Sources */,
+				A60000000000000000000002 /* Frameworks */,
+				A60000000000000000000003 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = GlobalNewsWallTV;
+			productName = GlobalNewsWallTV;
+			productReference = A20000000000000000000006 /* GlobalNewsWallTV.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C50000000000000000000001 /* IPTVWallMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C80000000000000000000001 /* Build configuration list for PBXNativeTarget */;
+			buildPhases = (
+				C60000000000000000000001 /* Sources */,
+				C60000000000000000000002 /* Frameworks */,
+				C60000000000000000000003 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = IPTVWallMac;
+			productName = IPTVWallMac;
+			productReference = C20000000000000000000001 /* IPTVWallMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E50000000000000000000001 /* IPTVWallPad */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E80000000000000000000001 /* iPadOS target configs */;
+			buildPhases = (
+				E60000000000000000000001 /* Sources */,
+				E60000000000000000000002 /* Frameworks */,
+				E60000000000000000000003 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = IPTVWallPad;
+			productName = IPTVWallPad;
+			productReference = E20000000000000000000001 /* IPTVWallPad.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B50000000000000000000001 /* GlobalNewsWallTVUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B80000000000000000000001 /* Build configuration list for PBXNativeTarget */;
+			buildPhases = (
+				B60000000000000000000001 /* Sources */,
+				B60000000000000000000002 /* Frameworks */,
+				B60000000000000000000003 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = (B90000000000000000000002 /* PBXTargetDependency */);
+			name = GlobalNewsWallTVUITests;
+			productName = GlobalNewsWallTVUITests;
+			productReference = B20000000000000000000002 /* GlobalNewsWallTVUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+
+		A60000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* GlobalNewsWallTVApp.swift in Sources */,
+				A10000000000000000000002 /* ChannelModel.swift in Sources */,
+				A10000000000000000000008 /* M3UPlaylistStore.swift in Sources */,
+				A10000000000000000000003 /* PlayerSurface.swift in Sources */,
+				A10000000000000000000004 /* ContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A60000000000000000000002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A60000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000005 /* Assets.xcassets in Resources */, D10000000000000000000001 /* Localizable.strings in Resources */, D10000000000000000000003 /* PrivacyInfo.xcprivacy in Resources */); runOnlyForDeploymentPostprocessing = 0; };
+		B60000000000000000000001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B10000000000000000000001 /* FocusNavigationTests.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
+		B60000000000000000000002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		B60000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		C60000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C10000000000000000000001 /* GlobalNewsWallTVApp.swift in Sources */,
+				C10000000000000000000002 /* ChannelModel.swift in Sources */,
+				C10000000000000000000003 /* M3UPlaylistStore.swift in Sources */,
+				C10000000000000000000004 /* PlayerSurface.swift in Sources */,
+				C10000000000000000000005 /* ContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C60000000000000000000002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		C60000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000006 /* Assets.xcassets in Resources */, D10000000000000000000002 /* Localizable.strings in Resources */, D10000000000000000000004 /* PrivacyInfo.xcprivacy in Resources */); runOnlyForDeploymentPostprocessing = 0; };
+		E60000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E10000000000000000000001 /* GlobalNewsWallTVApp.swift in Sources */,
+				E10000000000000000000002 /* ChannelModel.swift in Sources */,
+				E10000000000000000000003 /* M3UPlaylistStore.swift in Sources */,
+				E10000000000000000000004 /* PlayerSurface.swift in Sources */,
+				E10000000000000000000005 /* ContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E60000000000000000000002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		E60000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (E10000000000000000000006 /* Assets.xcassets in Resources */, E10000000000000000000007 /* Localizable.strings in Resources */, E10000000000000000000008 /* PrivacyInfo.xcprivacy in Resources */); runOnlyForDeploymentPostprocessing = 0; };
+
+		D30000000000000000000001 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				D20000000000000000000001 /* en */,
+				D20000000000000000000005 /* zh-Hant */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+
+		B90000000000000000000002 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A50000000000000000000001 /* GlobalNewsWallTV */; targetProxy = B90000000000000000000001 /* PBXContainerItemProxy */; };
+
+		A70000000000000000000001 /* Debug project */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; SDKROOT = appletvos; SWIFT_VERSION = 5.0; }; name = Debug; };
+		A70000000000000000000002 /* Release project */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; SDKROOT = appletvos; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_VERSION = 5.0; }; name = Release; };
+		A70000000000000000000003 /* Debug target */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = GlobalNewsWallTV/GlobalNewsWallTV.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 91;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GlobalNewsWallTV/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.neo99.IPTVWall;
+				PRODUCT_NAME = "IPTV Wall Player";
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Debug;
+		};
+		A70000000000000000000004 /* Release target */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = GlobalNewsWallTV/GlobalNewsWallTV.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 91;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GlobalNewsWallTV/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.neo99.IPTVWall;
+				PRODUCT_NAME = "IPTV Wall Player";
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Release;
+		};
+		B70000000000000000000001 /* Debug UI tests */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.neo99.IPTVWallUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TEST_TARGET_NAME = GlobalNewsWallTV;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Debug;
+		};
+		B70000000000000000000002 /* Release UI tests */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.neo99.IPTVWallUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TEST_TARGET_NAME = GlobalNewsWallTV;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Release;
+		};
+		C70000000000000000000001 /* Debug macOS */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = MacAppIcon;
+				CODE_SIGN_ENTITLEMENTS = GlobalNewsWallTV/Mac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 93;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GlobalNewsWallTV/MacInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.neo99.IPTVWall;
+				PRODUCT_NAME = "IPTV Wall Player";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		C70000000000000000000002 /* Release macOS */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = MacAppIcon;
+				CODE_SIGN_ENTITLEMENTS = GlobalNewsWallTV/Mac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 93;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GlobalNewsWallTV/MacInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.neo99.IPTVWall;
+				PRODUCT_NAME = "IPTV Wall Player";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		E70000000000000000000001 /* Debug iPadOS */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = iPadAppIcon;
+				CODE_SIGN_ENTITLEMENTS = GlobalNewsWallTV/iPad.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 92;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GlobalNewsWallTV/iPadInfo.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.neo99.IPTVWall;
+				PRODUCT_NAME = "IPTV Wall Player";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E70000000000000000000002 /* Release iPadOS */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = iPadAppIcon;
+				CODE_SIGN_ENTITLEMENTS = GlobalNewsWallTV/iPad.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 92;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GlobalNewsWallTV/iPadInfo.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.neo99.IPTVWall;
+				PRODUCT_NAME = "IPTV Wall Player";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+
+		A80000000000000000000001 /* Project configs */ = {isa = XCConfigurationList; buildConfigurations = (A70000000000000000000001, A70000000000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A80000000000000000000002 /* Target configs */ = {isa = XCConfigurationList; buildConfigurations = (A70000000000000000000003, A70000000000000000000004); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		B80000000000000000000001 /* UI test configs */ = {isa = XCConfigurationList; buildConfigurations = (B70000000000000000000001, B70000000000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		C80000000000000000000001 /* macOS target configs */ = {isa = XCConfigurationList; buildConfigurations = (C70000000000000000000001, C70000000000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		E80000000000000000000001 /* iPadOS target configs */ = {isa = XCConfigurationList; buildConfigurations = (E70000000000000000000001, E70000000000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+	};
+	rootObject = A40000000000000000000001 /* Project object */;
+}

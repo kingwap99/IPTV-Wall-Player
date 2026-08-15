@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "icon-large-v2.png",
+      "idiom" : "tv",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "com.neo99.GlobalNewsWallTV",
+    "version" : 1
+  }
+}
