@@ -47,6 +47,17 @@ The GitHub Release contains an arm64 build for Apple silicon. It is not
 notarized by Apple. On first launch, use Finder's **Open** command from the
 context menu and confirm that you want to open the app.
 
+If macOS still blocks the app after it has been moved to Applications, remove
+the download quarantine attribute and open it again:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/IPTV Wall Player.app"
+```
+
+The prebuilt GitHub binary intentionally omits restricted iCloud entitlements
+so it can run without an Apple distribution certificate. To use CloudKit,
+build the source with your own Apple Development Team in Xcode.
+
 ## Content And Privacy
 
 IPTV Wall Player is a playback tool. Users are responsible for ensuring they
@@ -62,4 +73,3 @@ Source code is available for inspection, learning, contribution, and free
 personal non-commercial use. Organizational or commercial use requires a
 separate commercial license. See [LICENSE.md](LICENSE.md) or contact
 `7dollars.tw@gmail.com`.
-
