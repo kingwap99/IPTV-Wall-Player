@@ -72,4 +72,4 @@ through the user's private iCloud account when that feature is enabled.
 Source code is available for inspection, learning, contribution, and free
 personal non-commercial use. Organizational or commercial use requires a
 separate commercial license. See [LICENSE.md](LICENSE.md) or contact
-`7dollars.tw@gmail.com`.
+`kingwap.tw@gmail.com`.

@@ -9,7 +9,7 @@ Use by a company, organization, government entity, educational institution, or
 other legal entity, and any use primarily intended for commercial advantage or
 monetary compensation, requires a separate written commercial license from the
 copyright holder. Commercial licensing inquiries may be sent to
-`7dollars.tw@gmail.com`.
+`kingwap.tw@gmail.com`.
 
 Redistribution of the software or modified versions must retain this notice,
 must not imply endorsement by the copyright holder, and must not use the IPTV
@@ -27,4 +27,3 @@ LIABILITY ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
 
 This is a source-available license and is not an OSI-approved open-source
 license.
-
