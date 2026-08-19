@@ -33,10 +33,14 @@ final class PlayerSession {
     private var fadeTimer: Timer?
     private var mutedTarget: Bool?
     private var volumeTarget: Float?
+    private var retryTimer: Timer?
+    private var retryCount = 0
+    private let isGo2RTCStream: Bool
 
     init(channel: NewsChannel, key: String) {
         self.key = key
         url = channel.url
+        isGo2RTCStream = channel.url.port == 1984
 
         let item = AVPlayerItem(url: channel.url)
         item.preferredForwardBufferDuration = 3
@@ -110,6 +114,10 @@ final class PlayerSession {
     private func notifyFailure() {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            if self.isGo2RTCStream, self.retryCount < 3 {
+                self.retryCount += 1
+                self.scheduleGo2RTCRetry()
+            }
             let handlers = Array(self.failureHandlers.values)
             for handler in handlers {
                 handler()
@@ -117,7 +125,40 @@ final class PlayerSession {
         }
     }
 
+    private func scheduleGo2RTCRetry() {
+        retryTimer?.invalidate()
+        retryTimer = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: false) { [weak self] _ in
+            guard let self else { return }
+            print("GO2RTC_PLAYER_RETRY attempt=\(self.retryCount) url=\(self.url.absoluteString)")
+            self.reloadCurrentItem()
+        }
+    }
+
+    private func reloadCurrentItem() {
+        statusObservation?.invalidate()
+        if let failureObserver { NotificationCenter.default.removeObserver(failureObserver) }
+        failureObserver = nil
+
+        let item = AVPlayerItem(url: url)
+        item.preferredForwardBufferDuration = 4
+        statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+            guard item.status == .failed else { return }
+            self?.notifyFailure()
+        }
+        failureObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemFailedToPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            self?.notifyFailure()
+        }
+        player.replaceCurrentItem(with: item)
+        player.play()
+    }
+
     func stop() {
+        retryTimer?.invalidate()
+        retryTimer = nil
         fadeTimer?.invalidate()
         fadeTimer = nil
         mutedTarget = nil

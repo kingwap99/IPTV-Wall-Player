@@ -443,7 +443,11 @@ struct ContentView: View {
                             moveReorderingChannel(sourceID: sourceID, to: channel)
                         },
                         onActivity: recordActivity,
-                        onFailure: { store.markUnavailable(channel) }
+                        onFailure: {
+                            if channel.category != .go2rtc {
+                                store.markUnavailable(channel)
+                            }
+                        }
                     )
                     .frame(width: cellWidth, height: cellHeight)
                     .platformFocusSection()
@@ -523,7 +527,11 @@ struct ContentView: View {
                 volume: Float(heroPlaybackVolume),
                 paused: allPlaybackPaused,
                 isPrimary: true
-            ) { store.markUnavailable(channel) }
+            ) {
+                if channel.category != .go2rtc {
+                    store.markUnavailable(channel)
+                }
+            }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
                 #if os(iOS)
@@ -817,15 +825,44 @@ struct ContentView: View {
         case .four: return "square.grid.2x2"
         case .five: return "square.grid.3x3"
         case .six: return "square.grid.3x3.fill"
+        case .seven: return "square.grid.4x3.fill"
         case .fullscreen: return "arrow.up.left.and.arrow.down.right"
         }
     }
 
+    private func sourceFilterSystemImage(_ filter: ChannelSourceFilter) -> String {
+        switch filter {
+        case .all: return "rectangle.stack"
+        case .iptv: return "globe"
+        case .go2rtc: return "video"
+        }
+    }
+
+    private func channelScopeLabel(_ category: ChannelCategory) -> String {
+        let title = category == .favorites ? localized("我的最愛") : localized("全部頻道")
+        let count = store.channelCount(category: category, sourceFilter: store.sourceFilter)
+        return "\(title)（\(count)）"
+    }
+
+    private func channelSourceLabel(_ sourceFilter: ChannelSourceFilter) -> String {
+        let count = store.channelCount(category: store.category, sourceFilter: sourceFilter)
+        return "\(sourceFilter.displayName)（\(count)）"
+    }
+
+    @ViewBuilder
+    private func filterMenuLabel(_ title: String, isSelected: Bool, systemImage: String) -> some View {
+        #if os(macOS)
+        Text(isSelected ? "\(title) ✓" : title)
+        #else
+        Label(title, systemImage: isSelected ? "checkmark" : systemImage)
+        #endif
+    }
+
     private var availableWallModes: [WallMode] {
         #if os(macOS)
-        [.four, .five, .six]
+        [.four, .five, .six, .seven]
         #else
-        [.four, .five]
+        [.four, .five, .six, .seven]
         #endif
     }
 
@@ -1146,6 +1183,10 @@ struct ContentView: View {
 
     private func restoreMainFocus() {
         recordActivity()
+        if mainFocus == .sourceFilter {
+            mainFocus = .hero
+            return
+        }
         if let channelID = quickActionReturnFocusChannelID {
             quickActionReturnFocusChannelID = nil
             if store.mode != .fullscreen,
@@ -1165,7 +1206,7 @@ struct ContentView: View {
 
 private var heroHasFocus: Bool {
         switch mainFocus {
-        case .hero, .starterChannels, .category, .mode, .resume, .m3uManager, .explorer, .favorite, .favoriteEarlier, .favoriteLater, .previous, .next, .volume, .autoDucking: return true
+        case .hero, .starterChannels, .category, .mode, .resume, .m3uManager, .explorer, .favorite, .favoriteEarlier, .favoriteLater, .previous, .next, .volume, .autoDucking, .sourceFilter: return true
         case .miniCenter, .none: return false
         }
     }
@@ -1302,26 +1343,46 @@ private var heroHasFocus: Bool {
             }
         }
 
-        Button {
-            dismissHeroChannelActions {
-                store.selectCategory(.all)
+        Section(localized("顯示範圍")) {
+            Button {
+                dismissHeroChannelActions {
+                    store.selectCategory(.all)
+                }
+            } label: {
+                filterMenuLabel(
+                    channelScopeLabel(.all),
+                    isSelected: store.category == .all,
+                    systemImage: "rectangle.stack"
+                )
             }
-        } label: {
-            Label(
-                localized("全部頻道"),
-                systemImage: store.category == .all ? "checkmark" : "rectangle.stack"
-            )
+
+            Button {
+                dismissHeroChannelActions {
+                    store.selectCategory(.favorites)
+                }
+            } label: {
+                filterMenuLabel(
+                    channelScopeLabel(.favorites),
+                    isSelected: store.category == .favorites,
+                    systemImage: "star"
+                )
+            }
         }
 
-        Button {
-            dismissHeroChannelActions {
-                store.selectCategory(.favorites)
+        Section(localized("頻道來源")) {
+            ForEach(ChannelSourceFilter.allCases) { filter in
+                Button {
+                    dismissHeroChannelActions {
+                        store.selectSourceFilter(filter)
+                    }
+                } label: {
+                    filterMenuLabel(
+                        channelSourceLabel(filter),
+                        isSelected: store.sourceFilter == filter,
+                        systemImage: sourceFilterSystemImage(filter)
+                    )
+                }
             }
-        } label: {
-            Label(
-                localized("我的最愛"),
-                systemImage: store.category == .favorites ? "checkmark" : "star"
-            )
         }
 
         ForEach(availableWallModes) { mode in
@@ -1431,26 +1492,46 @@ private var heroHasFocus: Bool {
             }
         }
 
-        Button {
-            performHeroContextAction {
-                store.selectCategory(.all)
+        Section(localized("顯示範圍")) {
+            Button {
+                performHeroContextAction {
+                    store.selectCategory(.all)
+                }
+            } label: {
+                filterMenuLabel(
+                    channelScopeLabel(.all),
+                    isSelected: store.category == .all,
+                    systemImage: "rectangle.stack"
+                )
             }
-        } label: {
-            Label(
-                localized("全部頻道"),
-                systemImage: store.category == .all ? "checkmark" : "rectangle.stack"
-            )
+
+            Button {
+                performHeroContextAction {
+                    store.selectCategory(.favorites)
+                }
+            } label: {
+                filterMenuLabel(
+                    channelScopeLabel(.favorites),
+                    isSelected: store.category == .favorites,
+                    systemImage: "star"
+                )
+            }
         }
 
-        Button {
-            performHeroContextAction {
-                store.selectCategory(.favorites)
+        Section(localized("頻道來源")) {
+            ForEach(ChannelSourceFilter.allCases) { filter in
+                Button {
+                    performHeroContextAction {
+                        store.selectSourceFilter(filter)
+                    }
+                } label: {
+                    filterMenuLabel(
+                        channelSourceLabel(filter),
+                        isSelected: store.sourceFilter == filter,
+                        systemImage: sourceFilterSystemImage(filter)
+                    )
+                }
             }
-        } label: {
-            Label(
-                localized("我的最愛"),
-                systemImage: store.category == .favorites ? "checkmark" : "star"
-            )
         }
 
         ForEach(availableWallModes) { mode in
@@ -1680,7 +1761,7 @@ private var heroHasFocus: Bool {
               let firstMiniChannel = store.pageChannels.first else { return }
 
         switch mainFocus {
-        case .hero, .starterChannels, .category, .mode, .resume, .m3uManager, .explorer, .favorite, .favoriteEarlier, .favoriteLater, .previous, .next, .volume, .autoDucking:
+        case .hero, .starterChannels, .category, .mode, .resume, .m3uManager, .explorer, .favorite, .favoriteEarlier, .favoriteLater, .previous, .next, .volume, .autoDucking, .sourceFilter:
             mainFocus = .miniCenter(firstMiniChannel.id)
         case .miniCenter, .none:
             break
@@ -1988,6 +2069,7 @@ private enum MainFocus: Hashable {
     case next
     case volume
     case autoDucking
+    case sourceFilter
     case miniCenter(String)
 }
 
@@ -3021,19 +3103,22 @@ private struct IPTVOrgExplorerView: View {
             .buttonStyle(.bordered)
         }
         #else
-        HStack {
+        VStack(alignment: .leading, spacing: 16) {
             explorerTitle
-            Spacer()
-            sourceLink
-            refreshButton
-            closeButton
-            addSelectedButton
+            HStack(spacing: 10) {
+                sourceLink
+                refreshButton
+                Spacer(minLength: 16)
+                addSelectedButton
+                closeButton
+            }
+            .buttonStyle(.bordered)
         }
         #endif
         TextField("搜尋頻道名稱，例如 BBC、NHK", text: $search)
             .platformPlainTextInput()
             #if !os(iOS)
-            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
             #endif
     }
 
@@ -3054,7 +3139,14 @@ private struct IPTVOrgExplorerView: View {
             qualityFilter
         }
         #else
-        HStack(spacing: 12) {
+        LazyVGrid(
+            columns: [
+                GridItem(.flexible(), spacing: 16),
+                GridItem(.flexible(), spacing: 16)
+            ],
+            alignment: .leading,
+            spacing: 14
+        ) {
             countryFilter
             languageFilter
             categoryFilter
@@ -3304,6 +3396,14 @@ private enum M3UManagerConfirmation: String, Identifiable {
     var id: String { rawValue }
 }
 
+private enum LibrarySourceFilter: String, CaseIterable, Identifiable {
+    case all = "全部"
+    case iptv = "IPTV"
+    case go2rtc = "go2rtc"
+
+    var id: String { rawValue }
+}
+
 #if os(macOS)
 private struct CloudLibraryBackupDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.json] }
@@ -3341,8 +3441,10 @@ private struct M3UManagerView: View {
     @State private var messageIsError = false
     @State private var pendingConfirmation: M3UManagerConfirmation?
     @State private var showPrivacy = false
+    @State private var librarySourceFilter: LibrarySourceFilter = .all
 #if os(macOS)
     @State private var cloudOperationInProgress = false
+    @State private var showGo2RTCResults = false
     @State private var cloudBackupDocument: CloudLibraryBackupDocument?
     @State private var cloudBackupFilename = "IPTVWall-iCloud-backup.json"
     @State private var cloudBackupExporterPresented = false
@@ -3350,6 +3452,29 @@ private struct M3UManagerView: View {
     @State private var pendingCloudRestoreBackup: CloudLibraryBackup?
 #endif
     private let intervalChoices = [5, 10, 15, 30, 60, 120]
+
+    private var libraryChannels: [NewsChannel] {
+        store.channels.filter { channel in
+            guard !store.unavailable.contains(channel.id) else { return false }
+            guard !store.deletedChannelIDs.contains(channel.id) else { return false }
+            switch librarySourceFilter {
+            case .all: return true
+            case .iptv: return channel.category == .m3u
+            case .go2rtc: return channel.category == .go2rtc
+            }
+        }
+        .sorted { lhs, rhs in
+            lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+
+    private func sourceBadgeText(for channel: NewsChannel) -> String {
+        channel.category == .go2rtc ? "go2rtc" : "IPTV"
+    }
+
+    private func sourceBadgeColor(for channel: NewsChannel) -> Color {
+        channel.category == .go2rtc ? Color.blue : Color.green
+    }
 
     var body: some View {
         ScrollView {
@@ -3374,18 +3499,37 @@ private struct M3UManagerView: View {
                 Text("新增頻道")
                     .font(.headline)
 
-                HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 10) {
                     TextField("https://example.com/playlist.m3u", text: $sourceURL)
                         .platformPlainTextInput()
-                    Button(localized(store.isImportingM3U ? "加入中…" : "加入 M3U")) {
-                        importPlaylist()
-                    }
-                    .disabled(store.isImportingM3U || sourceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-                    #if os(macOS)
-                    Button("探索公開頻道") { onExplore() }
-                    #endif
+                    HStack(spacing: 10) {
+                        Button(localized(store.isImportingM3U ? "加入中…" : "加入 M3U")) {
+                            importPlaylist()
+                        }
+                        .disabled(store.isImportingM3U || sourceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                        #if os(macOS)
+                        Button("探索公開頻道") { onExplore() }
+                        Button(store.isScanningGo2RTC ? "掃描中…" : "掃描 go2rtc 攝影機") {
+                            scanGo2RTC()
+                        }
+                        .disabled(store.isScanningGo2RTC)
+                        #endif
+                    }
                 }
+
+                #if os(macOS)
+                if store.isScanningGo2RTC {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text(go2rtcScanStatusText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                #endif
 
                 #if !os(macOS)
                 Text("貼上你有權使用的 M3U 播放清單網址。")
@@ -3427,7 +3571,8 @@ private struct M3UManagerView: View {
                                 Text("\(playlist.channelCount) 個頻道 · \(playlist.sourceURL)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                    .lineLimit(1)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
                             }
                             Spacer()
                             Button("刪除", role: .destructive) {
@@ -3446,6 +3591,67 @@ private struct M3UManagerView: View {
                     }
                 }
             }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("頻道列表（(libraryChannels.count)）")
+                        .font(.headline)
+                    Spacer()
+                    Picker("來源", selection: $librarySourceFilter) {
+                        ForEach(LibrarySourceFilter.allCases) { filter in
+                            Text(filter.rawValue).tag(filter)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 260)
+                }
+
+                if libraryChannels.isEmpty {
+                    Text("沒有符合這個來源的頻道")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 14)
+                        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14))
+                } else {
+                    LazyVStack(spacing: 10) {
+                        ForEach(libraryChannels) { channel in
+                            HStack(spacing: 14) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(channel.name)
+                                        .font(.headline)
+                                        .lineLimit(2)
+                                    Text(channel.url.absoluteString)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                        .truncationMode(.middle)
+                                }
+                                Spacer()
+                                Text(sourceBadgeText(for: channel))
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(sourceBadgeColor(for: channel).opacity(0.2), in: Capsule())
+                                Button(role: .destructive) {
+                                    store.deleteChannel(channel)
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 10)
+                            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
 
             Divider()
 
@@ -3511,26 +3717,28 @@ private struct M3UManagerView: View {
                         .fixedSize()
                 }
 
-                HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 10) {
                     TextField("https://example.com/remote-playlist.m3u", text: $remoteURL)
                         .platformPlainTextInput()
 
-                    Menu {
-                        ForEach(intervalChoices, id: \.self) { minutes in
-                            Button("\(minutes) 分鐘") { remoteIntervalMinutes = minutes }
+                    HStack(spacing: 10) {
+                        Menu {
+                            ForEach(intervalChoices, id: \.self) { minutes in
+                                Button("\(minutes) 分鐘") { remoteIntervalMinutes = minutes }
+                            }
+                        } label: {
+                            Text("每 \(remoteIntervalMinutes) 分鐘重載")
                         }
-                    } label: {
-                        Text("每 \(remoteIntervalMinutes) 分鐘重載")
-                    }
 
-                    Button("儲存") {
-                        saveRemoteSyncSettings()
-                    }
+                        Button("儲存") {
+                            saveRemoteSyncSettings()
+                        }
 
-                    Button(localized(store.isSyncingRemoteM3U ? "同步中…" : "立即同步")) {
-                        saveRemoteSyncSettings(syncNow: true)
+                        Button(localized(store.isSyncingRemoteM3U ? "同步中…" : "立即同步")) {
+                            saveRemoteSyncSettings(syncNow: true)
+                        }
+                        .disabled(store.isSyncingRemoteM3U || remoteURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                    .disabled(store.isSyncingRemoteM3U || remoteURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
                 Text(remoteStatusText)
@@ -3547,6 +3755,14 @@ private struct M3UManagerView: View {
         .sheet(isPresented: $showPrivacy) {
             PrivacyPolicyView()
         }
+#if os(macOS)
+        .sheet(isPresented: $showGo2RTCResults) {
+            Go2RTCScanResultView(store: store) { count in
+                message = "已加入 \(count) 個 go2rtc 攝影機。"
+                messageIsError = false
+            }
+        }
+#endif
         .onAppear {
             let settings = store.remoteSyncSettings
             remoteURL = settings.sourceURL
@@ -3631,6 +3847,31 @@ private struct M3UManagerView: View {
             }
         }
     }
+
+#if os(macOS)
+    private func scanGo2RTC() {
+        guard !store.isScanningGo2RTC else { return }
+        Task {
+            let candidates = await store.discoverGo2RTCChannels()
+            if candidates.isEmpty {
+                message = "在區域網路中沒有找到新的 go2rtc 攝影機。"
+                messageIsError = false
+            } else {
+                showGo2RTCResults = true
+            }
+        }
+    }
+
+    private var go2rtcScanStatusText: String {
+        guard let status = store.go2rtcScanStatus else { return "正在掃描區域網路…" }
+        switch status.stage {
+        case .discovering:
+            return "正在尋找 go2rtc 主機（\(status.scannedHosts)/\(status.totalHosts)），找到 \(status.foundServers) 台"
+        case .verifying:
+            return "正在確認攝影機畫面（\(status.verifiedStreams) 個）"
+        }
+    }
+#endif
 
     private var remoteStatusText: String {
         let settings = store.remoteSyncSettings
@@ -3836,6 +4077,87 @@ private struct M3UManagerView: View {
         messageIsError = true
     }
 }
+
+#if os(macOS)
+private struct Go2RTCScanResultView: View {
+    @ObservedObject var store: ChannelStore
+    let onAdded: (Int) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var selection: Set<String> = []
+
+    private var candidates: [Go2RTCDiscovery.Candidate] {
+        store.go2rtcScanCandidates
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("go2rtc 掃描結果")
+                    .font(.title.bold())
+                Text("勾選要加入播放牆的攝影機。已確認有畫面的會預先勾選。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            if candidates.isEmpty {
+                Text("沒有找到攝影機。")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(candidates) { candidate in
+                            Toggle(isOn: selectionBinding(for: candidate.id)) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: candidate.succeeded ? "checkmark.circle.fill" : "xmark.circle")
+                                        .foregroundStyle(candidate.succeeded ? Color.green : Color.orange)
+                                    Text(candidate.name)
+                                    if let reason = candidate.failureReason {
+                                        Text(reason)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .toggleStyle(.checkbox)
+                        }
+                    }
+                }
+            }
+
+            HStack {
+                Spacer()
+                Button("取消") { dismiss() }
+                Button("加入播放牆") {
+                    let chosen = candidates.filter { selection.contains($0.id) }
+                    let count = store.addSelectedGo2RTCChannels(chosen)
+                    onAdded(count)
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(selection.isEmpty)
+            }
+        }
+        .padding(28)
+        .frame(minWidth: 460, minHeight: 360)
+        .background(Color.black.ignoresSafeArea())
+        .onAppear {
+            let existing = Set(store.go2rtcChannels.map(\.id))
+            selection = Set(candidates.filter { $0.succeeded || existing.contains($0.id) }.map(\.id))
+        }
+    }
+
+    private func selectionBinding(for id: String) -> Binding<Bool> {
+        Binding(
+            get: { selection.contains(id) },
+            set: { checked in
+                if checked { selection.insert(id) } else { selection.remove(id) }
+            }
+        )
+    }
+}
+#endif
 
 private struct PrivacyPolicyView: View {
     @Environment(\.dismiss) private var dismiss

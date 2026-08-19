@@ -1,11 +1,28 @@
 import Foundation
 
-enum ChannelCategory: String, CaseIterable, Identifiable {
+enum ChannelCategory: String, CaseIterable, Identifiable, Codable {
     case all
     case favorites
     case m3u
+    case go2rtc
 
     var id: String { rawValue }
+}
+
+enum ChannelSourceFilter: String, CaseIterable, Identifiable, Codable {
+    case all
+    case iptv
+    case go2rtc
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .all: return "全部"
+        case .iptv: return "IPTV"
+        case .go2rtc: return "go2rtc"
+        }
+    }
 }
 
 #if os(macOS)
@@ -43,6 +60,7 @@ enum WallMode: String, CaseIterable, Identifiable {
     case four = "4×4"
     case five = "5×5"
     case six = "6×6"
+    case seven = "7×7"
     case fullscreen = "全螢幕"
 
     var id: String { rawValue }
@@ -52,18 +70,34 @@ enum WallMode: String, CaseIterable, Identifiable {
         case .four, .fullscreen: return 4
         case .five: return 5
         case .six: return 6
+        case .seven: return 7
         }
     }
 
     var pageSize: Int {
         switch self {
         case .fullscreen: return 12
-        case .four, .five, .six: return 4 * gridDimension - 4
+        case .four, .five, .six, .seven: return 4 * gridDimension - 4
         }
     }
 }
 
-struct NewsChannel: Identifiable, Hashable {
+#if os(macOS)
+struct Go2RTCScanStatus {
+    enum Stage {
+        case discovering
+        case verifying
+    }
+
+    let stage: Stage
+    let scannedHosts: Int
+    let totalHosts: Int
+    let foundServers: Int
+    let verifiedStreams: Int
+}
+#endif
+
+struct NewsChannel: Identifiable, Hashable, Codable {
     let id: String
     let name: String
     let url: URL
@@ -75,6 +109,7 @@ struct NewsChannel: Identifiable, Hashable {
 @MainActor
 final class ChannelStore: ObservableObject {
     @Published var channels: [NewsChannel] = []
+    @Published var go2rtcChannels: [NewsChannel] = []
     @Published var unavailable: Set<String> = []
     @Published var deletedChannelIDs: Set<String>
     @Published var isLoading = true
@@ -83,6 +118,7 @@ final class ChannelStore: ObservableObject {
     @Published var isSyncingRemoteM3U = false
     @Published var remoteSyncSettings: RemotePlaylistSyncSettings
     @Published var category: ChannelCategory
+    @Published var sourceFilter: ChannelSourceFilter
     @Published var selectedCountry = "ALL"
     @Published var mode: WallMode
     @Published var page = 0
@@ -110,11 +146,16 @@ final class ChannelStore: ObservableObject {
     // Keep the legacy identifier so existing remote-sync settings and iCloud data migrate
     // without creating a duplicate playlist. It is not shown to users.
     private let remotePlaylistID = "business-remote-m3u"
+    private let go2rtcChannelsKey = "go2rtc.channels.v1"
+    private let sourceFilterKey = "sourceFilter.v1"
     #if os(macOS)
     @Published var catalogChannels: [IPTVOrgCatalogChannel] = []
     @Published var isLoadingCatalog = false
     @Published var catalogError: String?
     @Published var isAddingStarterChannels = false
+    @Published var go2rtcScanStatus: Go2RTCScanStatus?
+    @Published var isScanningGo2RTC = false
+    @Published var go2rtcScanCandidates: [Go2RTCDiscovery.Candidate] = []
     private let discoveredPlaylistID = "iptv-org-discoveries"
     private let catalogMaxAge: TimeInterval = 60 * 60 * 24
     private static let starterPlaylistID = "starter-recommended-v1"
@@ -168,6 +209,7 @@ final class ChannelStore: ObservableObject {
             defaults.set(ChannelCategory.all.rawValue, forKey: "category")
             defaults.set(true, forKey: m3uDefaultMigrationKey)
         }
+        sourceFilter = ChannelSourceFilter(rawValue: defaults.string(forKey: sourceFilterKey) ?? "") ?? .all
         mode = WallMode(rawValue: defaults.string(forKey: "mode") ?? "") ?? .five
         let localFavorites = defaults.stringArray(forKey: "favorites") ?? []
         let localDeletedChannelIDs = defaults.stringArray(forKey: "deletedChannelIDs") ?? []
@@ -184,9 +226,18 @@ final class ChannelStore: ObservableObject {
         deletedChannelIDs = Set(localDeletedChannelIDs)
         importedPlaylists = localImportedPlaylists
         remoteSyncSettings = localRemoteSyncSettings
-        isCloudLibrarySyncEnabled = defaults.object(forKey: "cloudLibrarySyncEnabled.v1") == nil
-            ? true
-            : defaults.bool(forKey: "cloudLibrarySyncEnabled.v1")
+        go2rtcChannels = Self.loadGo2RTCChannels(from: defaults, key: go2rtcChannelsKey)
+        if defaults.object(forKey: "cloudLibrarySyncEnabled.v1") == nil {
+            #if os(iOS)
+            // Do not initialize a named CloudKit container during first launch. The user can
+            // explicitly restore from iCloud, after App Store signing has been validated.
+            isCloudLibrarySyncEnabled = false
+            #else
+            isCloudLibrarySyncEnabled = true
+            #endif
+        } else {
+            isCloudLibrarySyncEnabled = defaults.bool(forKey: "cloudLibrarySyncEnabled.v1")
+        }
         cloudLibraryLastSyncedAt = defaults.object(forKey: "cloudLibraryLastSyncedAt.v1") as? Date
         cloudLibraryModifiedAt = defaults.object(forKey: "cloudLibraryModifiedAt.v1") as? Date
             ?? (
@@ -207,11 +258,25 @@ final class ChannelStore: ObservableObject {
     }
 
     var filteredChannels: [NewsChannel] {
+        visibleChannels(category: category, sourceFilter: sourceFilter)
+    }
+
+    func channelCount(category: ChannelCategory, sourceFilter: ChannelSourceFilter) -> Int {
+        visibleChannels(category: category, sourceFilter: sourceFilter).count
+    }
+
+    private func visibleChannels(category: ChannelCategory, sourceFilter: ChannelSourceFilter) -> [NewsChannel] {
         let filtered = channels.filter { channel in
             guard !unavailable.contains(channel.id) else { return false }
             guard !deletedChannelIDs.contains(channel.id) else { return false }
             let categoryMatches = category == .favorites ? isFavorite(channel) : true
-            return categoryMatches && (selectedCountry == "ALL" || channel.country == selectedCountry)
+            let sourceMatches: Bool
+            switch sourceFilter {
+            case .all: sourceMatches = true
+            case .iptv: sourceMatches = channel.category == .m3u
+            case .go2rtc: sourceMatches = channel.category == .go2rtc
+            }
+            return categoryMatches && sourceMatches && (selectedCountry == "ALL" || channel.country == selectedCountry)
         }
         if category == .all {
             let order = Dictionary(uniqueKeysWithValues: m3uPriorityOrder.enumerated().map { ($0.element, $0.offset) })
@@ -337,7 +402,97 @@ final class ChannelStore: ObservableObject {
         guard let firstChannel = Self.bundledStarterChannels.first else { return }
         prioritizeM3UChannel(id: firstChannel.id)
     }
+
+    @discardableResult
+    func discoverGo2RTCChannels() async -> [Go2RTCDiscovery.Candidate] {
+        guard !isScanningGo2RTC else { return go2rtcScanCandidates }
+        isScanningGo2RTC = true
+        go2rtcScanStatus = nil
+        defer {
+            self.isScanningGo2RTC = false
+            self.go2rtcScanStatus = nil
+        }
+        let discovered = await Go2RTCDiscovery.discover { progress in
+            Task { @MainActor in
+                self.go2rtcScanStatus = Go2RTCScanStatus(
+                    stage: progress.phase == .discovering ? .discovering : .verifying,
+                    scannedHosts: progress.scannedHosts,
+                    totalHosts: progress.totalHosts,
+                    foundServers: progress.foundServers,
+                    verifiedStreams: progress.verifiedStreams
+                )
+            }
+       }
+        var upgraded = false
+        for candidate in discovered {
+            guard let newChannel = candidate.channel,
+                  let index = go2rtcChannels.firstIndex(where: { $0.id == newChannel.id }),
+                  go2rtcChannels[index].url != newChannel.url else { continue }
+            go2rtcChannels[index] = newChannel
+            upgraded = true
+        }
+        if upgraded {
+            Self.saveGo2RTCChannels(go2rtcChannels, to: defaults, key: go2rtcChannelsKey)
+            refreshImportedChannels()
+        }
+        go2rtcScanCandidates = discovered
+        return discovered
+    }
+
+    func addSelectedGo2RTCChannels(_ selected: [Go2RTCDiscovery.Candidate]) -> Int {
+        let additions = selected.compactMap(\.channel)
+        guard !additions.isEmpty else { return 0 }
+        print("GO2RTC_ADD selected=\(selected.map(\.name).joined(separator: ","))")
+        var merged = go2rtcChannels
+        let existing = Set(merged.map(\.id))
+        let added = additions.filter { !existing.contains($0.id) }
+        merged.append(contentsOf: added)
+        go2rtcChannels = merged
+        Self.saveGo2RTCChannels(merged, to: defaults, key: go2rtcChannelsKey)
+        for channel in added {
+            deletedChannelIDs.remove(channel.id)
+            unavailable.remove(channel.id)
+        }
+        defaults.set(Array(deletedChannelIDs), forKey: "deletedChannelIDs")
+        refreshImportedChannels()
+        if !added.isEmpty, let first = added.first {
+            prioritizeGo2RTCChannels(ids: added.map(\.id), featured: first.id)
+        }
+        go2rtcScanCandidates = []
+        print("GO2RTC_ADD done added=\(added.count) total=\(merged.count) deleted=\(deletedChannelIDs.sorted())")
+        return added.count
+    }
+
+    func clearGo2RTCChannels() {
+        go2rtcChannels = []
+        defaults.removeObject(forKey: go2rtcChannelsKey)
+        refreshImportedChannels()
+        normalizePage()
+    }
+
+    private func prioritizeGo2RTCChannels(ids: [String], featured: String) {
+        var order = m3uPriorityOrder.filter { !ids.contains($0) }
+        order.insert(contentsOf: ids, at: 0)
+        defaults.set(order, forKey: "m3uPriorityOrder")
+        defaults.removeObject(forKey: lastM3UFeatureIDKey)
+        featuredID = featured
+        category = .all
+        selectedCountry = "ALL"
+        page = 0
+        defaults.set(ChannelCategory.all.rawValue, forKey: "category")
+    }
     #endif
+
+    private static func loadGo2RTCChannels(from defaults: UserDefaults, key: String) -> [NewsChannel] {
+        guard let data = defaults.data(forKey: key),
+              let decoded = try? JSONDecoder().decode([NewsChannel].self, from: data) else { return [] }
+        return decoded
+    }
+
+    private static func saveGo2RTCChannels(_ channels: [NewsChannel], to defaults: UserDefaults, key: String) {
+        guard let data = try? JSONEncoder().encode(channels) else { return }
+        defaults.set(data, forKey: key)
+    }
 
     func syncCloudLibraryIfNeeded(force: Bool = false) async {
         guard isCloudLibrarySyncEnabled, !isSyncingCloudLibrary else { return }
@@ -442,6 +597,14 @@ final class ChannelStore: ObservableObject {
         page = 0
         featuredID = nil
         defaults.set(value.rawValue, forKey: "category")
+    }
+
+    func selectSourceFilter(_ value: ChannelSourceFilter) {
+        sourceFilter = value
+        selectedCountry = "ALL"
+        page = 0
+        featuredID = nil
+        defaults.set(value.rawValue, forKey: sourceFilterKey)
     }
 
     func saveRemoteSyncSettings(_ settings: RemotePlaylistSyncSettings) {
@@ -693,6 +856,7 @@ final class ChannelStore: ObservableObject {
             featureM3UChannelWithoutReordering(id: channel.id)
         } else {
             featuredID = channel.id
+            defaults.removeObject(forKey: lastM3UFeatureIDKey)
         }
     }
 
@@ -783,6 +947,10 @@ final class ChannelStore: ObservableObject {
 
     func deleteChannel(_ channel: NewsChannel) {
         deletedChannelIDs.insert(channel.id)
+        if channel.category == .go2rtc {
+            go2rtcChannels.removeAll { $0.id == channel.id }
+            Self.saveGo2RTCChannels(go2rtcChannels, to: defaults, key: go2rtcChannelsKey)
+        }
         favorites = favorites.filter { !matchesFavoriteIdentifier($0, channel: channel) }
         favoriteOrder.removeAll { matchesFavoriteIdentifier($0, channel: channel) }
         unavailable.remove(channel.id)
@@ -1129,7 +1297,9 @@ final class ChannelStore: ObservableObject {
     private func combinedChannels() -> [NewsChannel] {
         let source = importedChannels()
         var seen = Set<String>()
-        return source.filter { seen.insert($0.id).inserted }
+        var result = source.filter { seen.insert($0.id).inserted }
+        result.append(contentsOf: go2rtcChannels.filter { seen.insert($0.id).inserted })
+        return result
     }
 
     nonisolated private static func parsePlaylist(

@@ -122,10 +122,10 @@ actor CloudLibrarySyncService {
         }
         return identifiers.contains("iCloud.com.neo99.IPTVWall")
 #elseif targetEnvironment(simulator)
-        // Named CloudKit containers cannot be used by an unsigned simulator build.
+        // Named production containers are unavailable to unsigned simulator builds.
         return false
 #else
-        // A tvOS device build can only launch after its provisioning profile is validated.
+        // Device archives are validated after export to ensure this entitlement exists.
         return true
 #endif
     }
