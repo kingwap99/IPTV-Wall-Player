@@ -36,21 +36,23 @@ final class PlayerSession {
     private var retryTimer: Timer?
     private var retryCount = 0
     private let isGo2RTCStream: Bool
+    private let isLiveEdgeStream: Bool
 
     init(channel: NewsChannel, key: String) {
         self.key = key
         url = channel.url
         isGo2RTCStream = channel.url.port == 1984
+        isLiveEdgeStream = Self.isLiveEdgeStream(url: channel.url)
 
         let item = AVPlayerItem(url: channel.url)
-        item.preferredForwardBufferDuration = 3
+        item.preferredForwardBufferDuration = isLiveEdgeStream ? 2 : 6
         let createdPlayer = AVPlayer(playerItem: item)
         player = createdPlayer
         videoLayer = AVPlayerLayer(player: createdPlayer)
         videoLayer.videoGravity = .resizeAspectFill
         player.isMuted = true
         player.volume = 0
-        player.automaticallyWaitsToMinimizeStalling = true
+        player.automaticallyWaitsToMinimizeStalling = !isLiveEdgeStream
 
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             guard item.status == .failed else { return }
@@ -94,7 +96,7 @@ final class PlayerSession {
     }
 
     func updatePlayback(muted: Bool, volume: Float, paused: Bool) {
-        player.currentItem?.preferredForwardBufferDuration = muted ? 3 : 8
+        player.currentItem?.preferredForwardBufferDuration = isLiveEdgeStream ? 2 : (muted ? 6 : 12)
         applyAudio(muted: muted, volume: volume, animated: true)
         if paused {
             player.pause()
@@ -140,7 +142,7 @@ final class PlayerSession {
         failureObserver = nil
 
         let item = AVPlayerItem(url: url)
-        item.preferredForwardBufferDuration = 4
+        item.preferredForwardBufferDuration = isLiveEdgeStream ? 2 : 6
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             guard item.status == .failed else { return }
             self?.notifyFailure()
@@ -178,6 +180,29 @@ final class PlayerSession {
 
     deinit {
         stop()
+    }
+
+    private static func isLiveEdgeStream(url: URL) -> Bool {
+        guard url.path.contains("/live/") else { return false }
+        guard let host = url.host else { return false }
+        return host.hasPrefix("192.168.")
+            || host.hasPrefix("10.")
+            || host.hasPrefix("172.16.")
+            || host.hasPrefix("172.17.")
+            || host.hasPrefix("172.18.")
+            || host.hasPrefix("172.19.")
+            || host.hasPrefix("172.20.")
+            || host.hasPrefix("172.21.")
+            || host.hasPrefix("172.22.")
+            || host.hasPrefix("172.23.")
+            || host.hasPrefix("172.24.")
+            || host.hasPrefix("172.25.")
+            || host.hasPrefix("172.26.")
+            || host.hasPrefix("172.27.")
+            || host.hasPrefix("172.28.")
+            || host.hasPrefix("172.29.")
+            || host.hasPrefix("172.30.")
+            || host.hasPrefix("172.31.")
     }
 
     private func activatePreferredLayer() {
