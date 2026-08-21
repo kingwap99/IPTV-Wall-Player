@@ -34,12 +34,17 @@ final class PlayerSession {
     private var volumeTarget: Float?
     private var retryTimer: Timer?
     private var retryCount = 0
+    private var stallTimer: Timer?
+    private var stalledSince: Date?
+    private var localReloadCount = 0
     private let isGo2RTCStream: Bool
+    private let isLiveEdgeStream: Bool
 
     init(channel: NewsChannel, key: String) {
         self.key = key
         url = channel.url
         isGo2RTCStream = channel.url.port == 1984
+        isLiveEdgeStream = Self.isLiveEdgeStream(url: channel.url)
 
         let item = AVPlayerItem(url: channel.url)
         item.preferredForwardBufferDuration = 6
@@ -47,9 +52,12 @@ final class PlayerSession {
         player = createdPlayer
         videoLayer = AVPlayerLayer(player: createdPlayer)
         videoLayer.videoGravity = .resizeAspectFill
-       player.isMuted = true
-       player.volume = 0
+        player.isMuted = true
+        player.volume = 0
         player.automaticallyWaitsToMinimizeStalling = true
+        if isLiveEdgeStream {
+            startStallWatchdog()
+        }
 
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             guard item.status == .failed else { return }
@@ -155,9 +163,11 @@ final class PlayerSession {
         player.play()
     }
 
-   func stop() {
-       retryTimer?.invalidate()
-       retryTimer = nil
+    func stop() {
+        retryTimer?.invalidate()
+        retryTimer = nil
+        stallTimer?.invalidate()
+        stallTimer = nil
        fadeTimer?.invalidate()
         fadeTimer = nil
         mutedTarget = nil
@@ -179,6 +189,61 @@ final class PlayerSession {
         stop()
     }
 
+
+    private func startStallWatchdog() {
+        stallTimer?.invalidate()
+        stallTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.checkForStall()
+        }
+    }
+
+    private func checkForStall() {
+        guard isLiveEdgeStream,
+              let item = player.currentItem,
+              item.status == .readyToPlay,
+              player.timeControlStatus == .waitingToPlayAtSpecifiedRate else {
+            stalledSince = nil
+            return
+        }
+        let hasBuffer = (item.loadedTimeRanges.last?.timeRangeValue.duration.seconds ?? 0) > 0.5
+        if hasBuffer || player.currentTime().seconds > 0.5 {
+            stalledSince = nil
+            localReloadCount = 0
+            return
+        }
+        if stalledSince == nil {
+            stalledSince = Date()
+            return
+        }
+        guard Date().timeIntervalSince(stalledSince!) > 6, localReloadCount < 4 else { return }
+        localReloadCount += 1
+        stalledSince = Date()
+        print("LOCAL_STALL_RELOAD count=\(localReloadCount) url=\(url.absoluteString)")
+        reloadCurrentItem()
+    }
+
+    private static func isLiveEdgeStream(url: URL) -> Bool {
+        guard url.path.contains("/live/") else { return false }
+        guard let host = url.host else { return false }
+        return host.hasPrefix("192.168.")
+            || host.hasPrefix("10.")
+            || host.hasPrefix("172.16.")
+            || host.hasPrefix("172.17.")
+            || host.hasPrefix("172.18.")
+            || host.hasPrefix("172.19.")
+            || host.hasPrefix("172.20.")
+            || host.hasPrefix("172.21.")
+            || host.hasPrefix("172.22.")
+            || host.hasPrefix("172.23.")
+            || host.hasPrefix("172.24.")
+            || host.hasPrefix("172.25.")
+            || host.hasPrefix("172.26.")
+            || host.hasPrefix("172.27.")
+            || host.hasPrefix("172.28.")
+            || host.hasPrefix("172.29.")
+            || host.hasPrefix("172.30.")
+            || host.hasPrefix("172.31.")
+    }
 
     private func activatePreferredLayer() {
         layerAttachments = layerAttachments.filter { $0.value.containerLayer != nil }
