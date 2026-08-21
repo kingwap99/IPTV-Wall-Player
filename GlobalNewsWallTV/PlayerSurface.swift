@@ -34,17 +34,14 @@ final class PlayerSession {
     private var volumeTarget: Float?
     private var retryTimer: Timer?
     private var retryCount = 0
-    private var stallTimer: Timer?
-    private var stalledSince: Date?
-    private var localReloadCount = 0
     private let isGo2RTCStream: Bool
-    private let isLiveEdgeStream: Bool
+    private let isLocalIPTVStream: Bool
 
     init(channel: NewsChannel, key: String) {
         self.key = key
         url = channel.url
         isGo2RTCStream = channel.url.port == 1984
-        isLiveEdgeStream = Self.isLiveEdgeStream(url: channel.url)
+        isLocalIPTVStream = Self.isLocalIPTVStream(url: channel.url)
 
         let item = AVPlayerItem(url: channel.url)
         item.preferredForwardBufferDuration = 6
@@ -52,14 +49,14 @@ final class PlayerSession {
         player = createdPlayer
         videoLayer = AVPlayerLayer(player: createdPlayer)
         videoLayer.videoGravity = .resizeAspectFill
-        player.isMuted = true
-        player.volume = 0
+       player.isMuted = true
+       player.volume = 0
         player.automaticallyWaitsToMinimizeStalling = true
-        if isLiveEdgeStream {
-            startStallWatchdog()
-        }
 
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+            if item.status == .readyToPlay {
+                self?.retryCount = 0
+            }
             guard item.status == .failed else { return }
             self?.notifyFailure()
         }
@@ -124,6 +121,9 @@ final class PlayerSession {
             if self.isGo2RTCStream, self.retryCount < 3 {
                 self.retryCount += 1
                 self.scheduleGo2RTCRetry()
+            } else if self.isLocalIPTVStream {
+                self.retryCount += 1
+                self.scheduleLocalIPTVRetry()
             }
             let handlers = Array(self.failureHandlers.values)
             for handler in handlers {
@@ -137,6 +137,15 @@ final class PlayerSession {
         retryTimer = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: false) { [weak self] _ in
             guard let self else { return }
             print("GO2RTC_PLAYER_RETRY attempt=\(self.retryCount) url=\(self.url.absoluteString)")
+            self.reloadCurrentItem()
+        }
+    }
+
+    private func scheduleLocalIPTVRetry() {
+        retryTimer?.invalidate()
+        let delay = min(10.0, 1.0 + Double(retryCount))
+        retryTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            guard let self else { return }
             self.reloadCurrentItem()
         }
     }
@@ -163,11 +172,9 @@ final class PlayerSession {
         player.play()
     }
 
-    func stop() {
-        retryTimer?.invalidate()
-        retryTimer = nil
-        stallTimer?.invalidate()
-        stallTimer = nil
+   func stop() {
+       retryTimer?.invalidate()
+       retryTimer = nil
        fadeTimer?.invalidate()
         fadeTimer = nil
         mutedTarget = nil
@@ -190,39 +197,7 @@ final class PlayerSession {
     }
 
 
-    private func startStallWatchdog() {
-        stallTimer?.invalidate()
-        stallTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.checkForStall()
-        }
-    }
-
-    private func checkForStall() {
-        guard isLiveEdgeStream,
-              let item = player.currentItem,
-              item.status == .readyToPlay,
-              player.timeControlStatus == .waitingToPlayAtSpecifiedRate else {
-            stalledSince = nil
-            return
-        }
-        let hasBuffer = (item.loadedTimeRanges.last?.timeRangeValue.duration.seconds ?? 0) > 0.5
-        if hasBuffer || player.currentTime().seconds > 0.5 {
-            stalledSince = nil
-            localReloadCount = 0
-            return
-        }
-        if stalledSince == nil {
-            stalledSince = Date()
-            return
-        }
-        guard Date().timeIntervalSince(stalledSince!) > 6, localReloadCount < 4 else { return }
-        localReloadCount += 1
-        stalledSince = Date()
-        print("LOCAL_STALL_RELOAD count=\(localReloadCount) url=\(url.absoluteString)")
-        reloadCurrentItem()
-    }
-
-    private static func isLiveEdgeStream(url: URL) -> Bool {
+    private static func isLocalIPTVStream(url: URL) -> Bool {
         guard url.path.contains("/live/") else { return false }
         guard let host = url.host else { return false }
         return host.hasPrefix("192.168.")

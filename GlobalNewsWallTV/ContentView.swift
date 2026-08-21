@@ -444,7 +444,7 @@ struct ContentView: View {
                         },
                         onActivity: recordActivity,
                         onFailure: {
-                            if channel.category != .go2rtc {
+                            if channel.category != .go2rtc && !Self.isLocalIPTV(channel) {
                                 store.markUnavailable(channel)
                             }
                         }
@@ -528,7 +528,7 @@ struct ContentView: View {
                 paused: allPlaybackPaused,
                 isPrimary: true
             ) {
-                if channel.category != .go2rtc {
+                if channel.category != .go2rtc && !Self.isLocalIPTV(channel) {
                     store.markUnavailable(channel)
                 }
             }
@@ -1071,6 +1071,29 @@ struct ContentView: View {
         #else
         return false
         #endif
+    }
+
+    private static func isLocalIPTV(_ channel: NewsChannel) -> Bool {
+        guard channel.url.path.contains("/live/") else { return false }
+        guard let host = channel.url.host else { return false }
+        return host.hasPrefix("192.168.")
+            || host.hasPrefix("10.")
+            || host.hasPrefix("172.16.")
+            || host.hasPrefix("172.17.")
+            || host.hasPrefix("172.18.")
+            || host.hasPrefix("172.19.")
+            || host.hasPrefix("172.20.")
+            || host.hasPrefix("172.21.")
+            || host.hasPrefix("172.22.")
+            || host.hasPrefix("172.23.")
+            || host.hasPrefix("172.24.")
+            || host.hasPrefix("172.25.")
+            || host.hasPrefix("172.26.")
+            || host.hasPrefix("172.27.")
+            || host.hasPrefix("172.28.")
+            || host.hasPrefix("172.29.")
+            || host.hasPrefix("172.30.")
+            || host.hasPrefix("172.31.")
     }
 
     private func recordActivity() {
