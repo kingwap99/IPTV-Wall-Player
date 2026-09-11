@@ -18,7 +18,7 @@
   - macOS：目前沒有 macOS App Store profile，macOS 無法上 TestFlight，只能本地 zip 交付
   - tvOS 開發/Ad Hoc（本機 ~/Downloads）：IPTV_Wall_tvOS_Dev.mobileprovision、
     IPTV_Wall_tvOS_AdHoc.mobileprovision（2026-09-11 建，含兩台 ATV UDID）
-- 版號狀態：tvOS 101、iOS 100、macOS 114；MARKETING_VERSION = 1.3
+- 版號狀態：tvOS 102、iOS 102、macOS 115；MARKETING_VERSION = 1.3
 - iCloud 快照 schemaVersion = 3，已包含 go2rtc 頻道（go2rtc 增刪改會觸發同步）
 - iOS/tvOS 發行版（TestFlight/App Store）不會保留可讀的 embedded.mobileprovision，
   hasRequiredEntitlement 在真機上改為「無 profile 即信任簽章發行版」，

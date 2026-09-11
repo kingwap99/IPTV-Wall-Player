@@ -350,6 +350,16 @@ final class ChannelStore: ObservableObject {
         if ProcessInfo.processInfo.arguments.contains("--cloud-diagnose") {
             Task { await cloudDiagnose() }
         }
+        if ProcessInfo.processInfo.arguments.contains("--dump-tiles") {
+            dumpWallState(initial: true)
+            Task { [weak self] in
+                for _ in 0..<5 {
+                    try? await Task.sleep(for: .seconds(15))
+                    guard !Task.isCancelled else { return }
+                    await MainActor.run { self?.dumpWallState(initial: false) }
+                }
+            }
+        }
         if let argument = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--import-m3u-url=") }) {
             let source = String(argument.dropFirst("--import-m3u-url=".count))
             do {
@@ -419,6 +429,18 @@ final class ChannelStore: ObservableObject {
             try? ("cloudDiagnose error: " + error.localizedDescription)
                 .write(toFile: "/tmp/iptv-cloud-diag.json", atomically: true, encoding: .utf8)
         }
+    }
+
+    private func dumpWallState(initial: Bool) {
+        defaults.set(channels.map(\.id), forKey: "diagWallOrder.v1")
+        defaults.set(category.rawValue, forKey: "diagCategory.v1")
+        defaults.set(mode.rawValue, forKey: "diagMode.v1")
+        defaults.set(channels.count, forKey: "diagChannelCount.v1")
+        defaults.set(Array(unavailable), forKey: "diagUnavailable.v1")
+        defaults.set(PlayerPool.shared.dumpStates(), forKey: "diagPlayerStates.v1")
+        defaults.set(page, forKey: "diagPage.v1")
+        defaults.set(filteredChannels.map(\.id), forKey: "diagFilteredOrder.v1")
+        print("WALL_DUMP initial=" + String(initial) + " count=" + String(channels.count) + " unavailable=" + String(unavailable.count))
     }
 
     #if os(macOS)

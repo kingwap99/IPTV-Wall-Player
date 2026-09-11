@@ -34,6 +34,12 @@ final class PlayerSession {
     private var volumeTarget: Float?
     private var retryTimer: Timer?
     private var retryCount = 0
+    private var stallObserver: NSObjectProtocol?
+    private var watchdogTimer: Timer?
+    private var lastKnownTime: Double?
+    private var stalledChecks = 0
+    private var stallReloadCount = 0
+    private var shouldBePlaying = true
     private let isGo2RTCStream: Bool
     private let isLocalIPTVStream: Bool
 
@@ -51,7 +57,9 @@ final class PlayerSession {
         videoLayer.videoGravity = .resizeAspectFill
        player.isMuted = true
        player.volume = 0
-        player.automaticallyWaitsToMinimizeStalling = true
+        // Live streams must not wait for the stalling heuristic: on tvOS that can
+        // leave a tile waiting indefinitely without ever reporting an error.
+        player.automaticallyWaitsToMinimizeStalling = false
 
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             if item.status == .readyToPlay {
@@ -67,6 +75,8 @@ final class PlayerSession {
         ) { [weak self] _ in
             self?.notifyFailure()
         }
+        observeStalls(for: item)
+        startWatchdog()
     }
 
     func register(ownerID: UUID, onFailure: @escaping () -> Void) {
@@ -100,6 +110,7 @@ final class PlayerSession {
     func updatePlayback(muted: Bool, volume: Float, paused: Bool) {
         player.currentItem?.preferredForwardBufferDuration = muted ? 6 : 12
         applyAudio(muted: muted, volume: volume, animated: true)
+        shouldBePlaying = !paused
         if paused {
             player.pause()
         } else {
@@ -118,6 +129,7 @@ final class PlayerSession {
     private func notifyFailure() {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            self.logDiag("FAIL")
             if self.isGo2RTCStream, self.retryCount < 3 {
                 self.retryCount += 1
                 self.scheduleGo2RTCRetry()
@@ -168,6 +180,9 @@ final class PlayerSession {
         ) { [weak self] _ in
             self?.notifyFailure()
         }
+        observeStalls(for: item)
+        lastKnownTime = nil
+        stalledChecks = 0
         player.replaceCurrentItem(with: item)
         player.play()
     }
@@ -181,9 +196,15 @@ final class PlayerSession {
         volumeTarget = nil
         statusObservation?.invalidate()
         statusObservation = nil
-        if let failureObserver { NotificationCenter.default.removeObserver(failureObserver) }
-        failureObserver = nil
-        layerAttachments.removeAll()
+       if let failureObserver { NotificationCenter.default.removeObserver(failureObserver) }
+       failureObserver = nil
+       if let stallObserver { NotificationCenter.default.removeObserver(stallObserver) }
+       stallObserver = nil
+       watchdogTimer?.invalidate()
+       watchdogTimer = nil
+       lastKnownTime = nil
+       stalledChecks = 0
+       layerAttachments.removeAll()
         activeLayerOwnerID = nil
         videoLayer.removeFromSuperlayer()
         videoLayer.player = nil
@@ -218,6 +239,82 @@ final class PlayerSession {
             || host.hasPrefix("172.29.")
             || host.hasPrefix("172.30.")
             || host.hasPrefix("172.31.")
+    }
+
+    // Live tiles can stall or freeze on a stale frame without ever reporting .failed,
+    // so without recovery they stay black until the app is relaunched.
+    private func observeStalls(for item: AVPlayerItem) {
+        if let stallObserver { NotificationCenter.default.removeObserver(stallObserver) }
+        stallObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemPlaybackStalled,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            self?.recoverFromStall(reason: "stalled")
+        }
+    }
+
+    private func startWatchdog() {
+        watchdogTimer?.invalidate()
+        watchdogTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            self?.checkPlaybackProgress()
+        }
+    }
+
+    private func checkPlaybackProgress() {
+        guard shouldBePlaying, player.currentItem != nil else { return }
+        switch player.timeControlStatus {
+        case .waitingToPlayAtSpecifiedRate:
+            if player.reasonForWaitingToPlay == .toMinimizeStalls {
+                player.playImmediately(atRate: 1)
+            }
+            stalledChecks += 1
+            if stalledChecks >= 4 {
+                stalledChecks = 0
+                recoverFromStall(reason: "waiting")
+            }
+        case .playing:
+            let now = player.currentTime().seconds
+            if let last = lastKnownTime, abs(now - last) < 0.01 {
+                stalledChecks += 1
+                if stalledChecks >= 5 {
+                    stalledChecks = 0
+                    recoverFromStall(reason: "frozen")
+                }
+            } else {
+                stalledChecks = 0
+                stallReloadCount = 0
+                lastKnownTime = now
+            }
+        default:
+            stalledChecks = 0
+        }
+    }
+
+    private func recoverFromStall(reason: String) {
+        guard shouldBePlaying else { return }
+        // Keep recovering forever with backoff: a live tile that freezes today can
+        // play again later, so it must not stay black until the app is relaunched.
+        let delay = stallReloadCount < 6 ? 0.3 : min(20.0, 5.0 + Double(stallReloadCount - 6))
+        stallReloadCount += 1
+        lastKnownTime = nil
+        print("PLAYER_STALL_RELOAD reason=\(reason) count=\(stallReloadCount) delay=\(delay) url=\(url.absoluteString)")
+        logDiag("STALL_RELOAD", extra: "reason=\(reason) count=\(stallReloadCount)")
+        retryTimer?.invalidate()
+        retryTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            self?.reloadCurrentItem()
+        }
+    }
+
+    // Lightweight persisted diagnostics so on-device behavior can be read back from
+    // the app container without a console: [epoch url kind extra].
+    private func logDiag(_ kind: String, extra: String = "") {
+        let key = "playerDiag.v1"
+        var list = UserDefaults.standard.stringArray(forKey: key) ?? []
+        let entry = String(Int(Date().timeIntervalSince1970)) + " " + kind + " " + url.absoluteString + " " + extra
+        list.append(entry)
+        if list.count > 80 { list.removeFirst(list.count - 80) }
+        UserDefaults.standard.set(list, forKey: key)
     }
 
     private func activatePreferredLayer() {
@@ -333,6 +430,21 @@ final class PlayerPool {
             releasedSessionRetentionUntil,
             Date().addingTimeInterval(duration)
         )
+    }
+
+    func dumpStates() -> [String] {
+        sessions.values.map { session in
+            let status: String
+            switch session.player.timeControlStatus {
+            case .playing: status = "playing"
+            case .paused: status = "paused"
+            case .waitingToPlayAtSpecifiedRate: status = "waiting"
+            @unknown default: status = "unknown"
+            }
+            let seconds = session.player.currentItem?.currentTime().seconds ?? -1
+            let failed = session.player.currentItem?.error == nil ? "" : "|error"
+            return session.key + "|" + status + "|" + String(format: "%.1f", seconds) + failed
+        }.sorted()
     }
 
     func acquire(
