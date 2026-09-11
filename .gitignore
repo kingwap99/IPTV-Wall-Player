@@ -15,3 +15,6 @@ releases/
 *.xcuserstate
 xcuserdata/
 
+*.app/
+IPTVWall-mac-*.zip
+IPTVWall-macOS-*.dmg
