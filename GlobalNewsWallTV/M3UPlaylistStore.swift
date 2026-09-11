@@ -32,23 +32,71 @@ struct RemotePlaylistSyncSettings: Codable, Hashable {
 }
 
 struct CloudLibrarySnapshot: Codable, Hashable {
-    let schemaVersion: Int
+    var schemaVersion: Int
     var modifiedAt: Date
     var playlists: [ImportedPlaylistRecord]
     var favoriteOrder: [String]
     var deletedChannelIDs: [String]
     var m3uPriorityOrder: [String]
     var remoteSyncSettings: RemotePlaylistSyncSettings
+    var go2rtcChannels: [NewsChannel]
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case modifiedAt
+        case playlists
+        case favoriteOrder
+        case deletedChannelIDs
+        case m3uPriorityOrder
+        case remoteSyncSettings
+        case go2rtcChannels
+    }
+
+    init(schemaVersion: Int, modifiedAt: Date, playlists: [ImportedPlaylistRecord], favoriteOrder: [String], deletedChannelIDs: [String], m3uPriorityOrder: [String], remoteSyncSettings: RemotePlaylistSyncSettings, go2rtcChannels: [NewsChannel]) {
+        self.schemaVersion = schemaVersion
+        self.modifiedAt = modifiedAt
+        self.playlists = playlists
+        self.favoriteOrder = favoriteOrder
+        self.deletedChannelIDs = deletedChannelIDs
+        self.m3uPriorityOrder = m3uPriorityOrder
+        self.remoteSyncSettings = remoteSyncSettings
+        self.go2rtcChannels = go2rtcChannels
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try c.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 2
+        modifiedAt = try c.decodeIfPresent(Date.self, forKey: .modifiedAt) ?? Date()
+        playlists = try c.decodeIfPresent([ImportedPlaylistRecord].self, forKey: .playlists) ?? []
+        favoriteOrder = try c.decodeIfPresent([String].self, forKey: .favoriteOrder) ?? []
+        deletedChannelIDs = try c.decodeIfPresent([String].self, forKey: .deletedChannelIDs) ?? []
+        m3uPriorityOrder = try c.decodeIfPresent([String].self, forKey: .m3uPriorityOrder) ?? []
+        remoteSyncSettings = try c.decodeIfPresent(RemotePlaylistSyncSettings.self, forKey: .remoteSyncSettings) ?? .disabled
+        go2rtcChannels = try c.decodeIfPresent([NewsChannel].self, forKey: .go2rtcChannels) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(schemaVersion, forKey: .schemaVersion)
+        try c.encode(modifiedAt, forKey: .modifiedAt)
+        try c.encode(playlists, forKey: .playlists)
+        try c.encode(favoriteOrder, forKey: .favoriteOrder)
+        try c.encode(deletedChannelIDs, forKey: .deletedChannelIDs)
+        try c.encode(m3uPriorityOrder, forKey: .m3uPriorityOrder)
+        try c.encode(remoteSyncSettings, forKey: .remoteSyncSettings)
+        try c.encode(go2rtcChannels, forKey: .go2rtcChannels)
+    }
 
     static func emptyReset(modifiedAt: Date = Date()) -> CloudLibrarySnapshot {
         CloudLibrarySnapshot(
-            schemaVersion: 2,
+            schemaVersion: 3,
             modifiedAt: modifiedAt,
             playlists: [],
             favoriteOrder: [],
             deletedChannelIDs: [],
             m3uPriorityOrder: [],
-            remoteSyncSettings: .disabled
+            remoteSyncSettings: .disabled,
+            go2rtcChannels: []
         )
     }
 }
@@ -112,25 +160,72 @@ actor CloudLibrarySyncService {
 
     static var hasRequiredEntitlement: Bool {
 #if os(macOS)
-        guard let task = SecTaskCreateFromSelf(nil),
-              let identifiers = SecTaskCopyValueForEntitlement(
-                task,
-                "com.apple.developer.icloud-container-identifiers" as CFString,
-                nil
-              ) as? [String] else {
-            return false
-        }
-        return identifiers.contains("iCloud.com.neo99.IPTVWall")
+        return runtimeEntitlementValues("com.apple.developer.icloud-container-identifiers")
+            .contains("iCloud.com.neo99.IPTVWall")
 #elseif targetEnvironment(simulator)
         // Named production containers are unavailable to unsigned simulator builds.
         return false
 #else
-        // Device archives are validated after export to ensure this entitlement exists.
-        return true
+        // Development installs embed a readable provisioning profile. TestFlight and
+        // App Store delivery keep the CloudKit container entitlement in the code
+        // signature but do not always retain a readable profile in the bundle, so a
+        // missing profile means "trust the signed build". A profile that visibly
+        // lacks the container keeps sync disabled so we never construct CKContainer
+        // with an identifier the running app does not hold.
+        let values = runtimeEntitlementValues("com.apple.developer.icloud-container-identifiers")
+        if values.contains("iCloud.com.neo99.IPTVWall") {
+            return true
+        }
+        return Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision") == nil
 #endif
     }
 
-    private let container = CKContainer(identifier: CloudLibrarySyncService.containerIdentifier)
+    static var hasUbiquityEntitlement: Bool {
+#if targetEnvironment(simulator)
+        return false
+#elseif os(macOS)
+        return !runtimeEntitlementValues("com.apple.developer.ubiquity-kvstore-identifier").isEmpty
+#else
+        let values = runtimeEntitlementValues("com.apple.developer.ubiquity-kvstore-identifier")
+        if !values.isEmpty {
+            return true
+        }
+        return Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision") == nil
+#endif
+    }
+
+    // Reads the entitlements the running app was actually signed with. iOS/tvOS do not
+    // expose SecTask, so we parse the embedded provisioning profile instead; this
+    // reflects any re-signing done by TestFlight/App Store delivery.
+    private static func runtimeEntitlementValues(_ key: String) -> [String] {
+#if os(macOS)
+        guard let task = SecTaskCreateFromSelf(nil),
+              let values = SecTaskCopyValueForEntitlement(task, key as CFString, nil) as? [String] else {
+            return []
+        }
+        return values
+#else
+        guard let profileURL = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let data = try? Data(contentsOf: profileURL) else { return [] }
+        guard let xmlStart = data.range(of: Data("<?xml".utf8)),
+              let xmlEnd = data.range(of: Data("</plist>".utf8), in: xmlStart.lowerBound..<data.endIndex) else {
+            return []
+        }
+        let plistData = data.subdata(in: xmlStart.lowerBound..<xmlEnd.upperBound)
+        guard let plist = try? PropertyListSerialization.propertyList(
+                from: plistData, options: [], format: nil) as? [String: Any],
+              let entitlements = plist["Entitlements"] as? [String: Any],
+              let values = entitlements[key] as? [String] else {
+            return []
+        }
+        return values
+#endif
+    }
+
+    // Created lazily: constructing CKContainer with an identifier the signed app does not
+    // actually hold raises an Objective-C exception, so we only touch it after
+    // hasRequiredEntitlement verified the runtime entitlements.
+    private lazy var container = CKContainer(identifier: CloudLibrarySyncService.containerIdentifier)
     private let recordID = CKRecord.ID(recordName: CloudLibrarySyncService.recordName)
     private let recordType = "IPTVWallLibrary"
 

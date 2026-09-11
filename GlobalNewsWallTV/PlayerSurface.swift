@@ -248,6 +248,8 @@ final class PlayerSession {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         videoLayer.removeFromSuperlayer()
+        // Hero (priority 1+): full visible (letterbox). Mini (priority 0): crop to fill.
+        videoLayer.videoGravity = selected.attachment.priority >= 1 ? .resizeAspect : .resizeAspectFill
         videoLayer.frame = containerLayer.bounds
         containerLayer.addSublayer(videoLayer)
         CATransaction.commit()

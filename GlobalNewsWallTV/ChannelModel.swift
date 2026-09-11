@@ -228,13 +228,7 @@ final class ChannelStore: ObservableObject {
         remoteSyncSettings = localRemoteSyncSettings
         go2rtcChannels = Self.loadGo2RTCChannels(from: defaults, key: go2rtcChannelsKey)
         if defaults.object(forKey: "cloudLibrarySyncEnabled.v1") == nil {
-            #if os(iOS)
-            // Do not initialize a named CloudKit container during first launch. The user can
-            // explicitly restore from iCloud, after App Store signing has been validated.
-            isCloudLibrarySyncEnabled = false
-            #else
             isCloudLibrarySyncEnabled = true
-            #endif
         } else {
             isCloudLibrarySyncEnabled = defaults.bool(forKey: "cloudLibrarySyncEnabled.v1")
         }
@@ -346,7 +340,16 @@ final class ChannelStore: ObservableObject {
 
     func load() async {
         isLoading = true
-        await syncCloudLibraryIfNeeded(force: true)
+        // Cloud and remote playlists sync in the background: a slow or unreachable
+        // iCloud container must never trap the app on the loading screen.
+        Task {
+            await syncCloudLibraryIfNeeded(force: true)
+            await syncRemotePlaylistIfNeeded(force: false)
+            await MainActor.run { channels = combinedChannels() }
+        }
+        if ProcessInfo.processInfo.arguments.contains("--cloud-diagnose") {
+            Task { await cloudDiagnose() }
+        }
         if let argument = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--import-m3u-url=") }) {
             let source = String(argument.dropFirst("--import-m3u-url=".count))
             do {
@@ -360,10 +363,6 @@ final class ChannelStore: ObservableObject {
         }
         channels = combinedChannels()
         normalizePage()
-        await syncRemotePlaylistIfNeeded(force: false)
-        // Remote sync can also add a playlist. Publish the loaded state only after every
-        // startup source has finished so first-use never races into the wall view.
-        channels = combinedChannels()
         isLoading = false
 
     }
@@ -376,6 +375,49 @@ final class ChannelStore: ObservableObject {
         guard enabled else { return }
         cloudLibrarySyncTask = Task { [weak self] in
             await self?.syncCloudLibraryIfNeeded(force: true)
+        }
+    }
+
+    private func cloudDiagnose() async {
+        print("CLOUD_DIAG start entitlements=\(CloudLibrarySyncService.hasRequiredEntitlement)")
+        defaults.set(
+            "local:m=\(cloudLibraryModifiedAt):g=\(go2rtcChannels.count):p=\(importedPlaylists.count):f=\(favoriteOrder.count)",
+            forKey: "cloudDiagLocal.v1"
+        )
+        do {
+            let remote = try await CloudLibrarySyncService.shared.fetchSnapshot()
+            print("CLOUD_DIAG fetched remote=\(remote == nil ? "nil" : "present")")
+            if let remote {
+                defaults.set(
+                    "remote:s=\(remote.schemaVersion):m=\(remote.modifiedAt):g=\(remote.go2rtcChannels.count):p=\(remote.playlists.count):f=\(remote.favoriteOrder.count)",
+                    forKey: "cloudDiagRemote.v1"
+                )
+            } else {
+                defaults.set("remote:nil", forKey: "cloudDiagRemote.v1")
+            }
+            var dict: [String: Any] = [
+                "localPlaylists": importedPlaylists.count,
+                "localGo2rtc": go2rtcChannels.count,
+                "localModifiedAt": cloudLibraryModifiedAt,
+                "localFavorites": favoriteOrder.count,
+                "isCloudLibrarySyncEnabled": isCloudLibrarySyncEnabled,
+                "hasRequiredEntitlement": CloudLibrarySyncService.hasRequiredEntitlement,
+                "hasUbiquityEntitlement": CloudLibrarySyncService.hasUbiquityEntitlement
+            ]
+            if let remote {
+                dict["remoteSchemaVersion"] = remote.schemaVersion
+                dict["remoteModifiedAt"] = remote.modifiedAt
+                dict["remotePlaylists"] = remote.playlists.count
+                dict["remoteGo2rtc"] = remote.go2rtcChannels.count
+                dict["remoteFavorites"] = remote.favoriteOrder.count
+            } else {
+                dict["remote"] = "nil"
+            }
+            let data = try JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])
+            try data.write(to: URL(fileURLWithPath: "/tmp/iptv-cloud-diag.json"))
+        } catch {
+            try? ("cloudDiagnose error: " + error.localizedDescription)
+                .write(toFile: "/tmp/iptv-cloud-diag.json", atomically: true, encoding: .utf8)
         }
     }
 
@@ -434,6 +476,7 @@ final class ChannelStore: ObservableObject {
         if upgraded {
             Self.saveGo2RTCChannels(go2rtcChannels, to: defaults, key: go2rtcChannelsKey)
             refreshImportedChannels()
+            markCloudLibraryChanged()
         }
         go2rtcScanCandidates = discovered
         return discovered
@@ -457,6 +500,7 @@ final class ChannelStore: ObservableObject {
         refreshImportedChannels()
         if !added.isEmpty, let first = added.first {
             prioritizeGo2RTCChannels(ids: added.map(\.id), featured: first.id)
+            markCloudLibraryChanged()
         }
         go2rtcScanCandidates = []
         print("GO2RTC_ADD done added=\(added.count) total=\(merged.count) deleted=\(deletedChannelIDs.sorted())")
@@ -467,6 +511,7 @@ final class ChannelStore: ObservableObject {
         go2rtcChannels = []
         defaults.removeObject(forKey: go2rtcChannelsKey)
         refreshImportedChannels()
+        markCloudLibraryChanged()
         normalizePage()
     }
 
@@ -511,29 +556,46 @@ final class ChannelStore: ObservableObject {
 
         isSyncingCloudLibrary = true
         defaults.set(Date(), forKey: cloudLibraryLastAttemptAtKey)
+        defaults.set(importedPlaylists.count as NSNumber, forKey: "cloudSyncLocalPlaylists.v1")
         defer { isSyncingCloudLibrary = false }
 
         do {
-            let result = try await CloudLibrarySyncService.shared.synchronize(local: makeCloudLibrarySnapshot())
+            let result = try await withTimeout(45) {
+                try await CloudLibrarySyncService.shared.synchronize(local: self.makeCloudLibrarySnapshot())
+            }
             switch result {
             case .downloaded(let snapshot):
+                defaults.set(
+                    "downloaded:modified=\(snapshot.modifiedAt):schema=\(snapshot.schemaVersion):go2rtc=\(snapshot.go2rtcChannels.count):playlists=\(snapshot.playlists.count)",
+                    forKey: "cloudSyncResult.v1"
+                )
                 try applyCloudLibrarySnapshot(snapshot)
                 await syncRemotePlaylistIfNeeded(force: false)
-            case .uploaded, .unchanged:
+            case .uploaded:
+                defaults.set("uploaded", forKey: "cloudSyncResult.v1")
+            case .unchanged:
+                defaults.set("unchanged", forKey: "cloudSyncResult.v1")
                 break
             }
             let now = Date()
             cloudLibraryLastSyncedAt = now
             defaults.set(now, forKey: cloudLibraryLastSyncedAtKey)
             cloudLibraryError = nil
+            defaults.removeObject(forKey: "cloudLibraryError.v1")
         } catch {
-            cloudLibraryError = error.localizedDescription
+            let message = error.localizedDescription
+            cloudLibraryError = message
+            defaults.set(message, forKey: "cloudLibraryError.v1")
+            defaults.set("error:\(message)", forKey: "cloudSyncResult.v1")
         }
     }
 
     func makeCloudLibraryBackup() async throws -> CloudLibraryBackup {
+        guard CloudLibrarySyncService.hasRequiredEntitlement else { throw CloudLibrarySyncError.iCloudUnavailable }
         let snapshot = try await CloudLibrarySyncService.shared.fetchSnapshot()
-        let favorites = cloudStore.array(forKey: cloudFavoritesKey) as? [String] ?? []
+        let favorites = CloudLibrarySyncService.hasUbiquityEntitlement
+            ? (cloudStore.array(forKey: cloudFavoritesKey) as? [String] ?? [])
+            : Array(favoriteOrder)
         return CloudLibraryBackup(
             formatVersion: CloudLibraryBackup.currentFormatVersion,
             containerIdentifier: CloudLibrarySyncService.containerIdentifier,
@@ -576,8 +638,10 @@ final class ChannelStore: ObservableObject {
         defer { isSyncingCloudLibrary = false }
 
         try await CloudLibrarySyncService.shared.clear()
-        cloudStore.set([String](), forKey: cloudFavoritesKey)
-        cloudStore.synchronize()
+        if CloudLibrarySyncService.hasUbiquityEntitlement {
+            cloudStore.set([String](), forKey: cloudFavoritesKey)
+            cloudStore.synchronize()
+        }
 
         // Keep local playlists intact. The cloud record now contains a newer empty snapshot,
         // so other installations download the reset instead of recreating a deleted record.
@@ -950,6 +1014,7 @@ final class ChannelStore: ObservableObject {
         if channel.category == .go2rtc {
             go2rtcChannels.removeAll { $0.id == channel.id }
             Self.saveGo2RTCChannels(go2rtcChannels, to: defaults, key: go2rtcChannelsKey)
+            markCloudLibraryChanged()
         }
         favorites = favorites.filter { !matchesFavoriteIdentifier($0, channel: channel) }
         favoriteOrder.removeAll { matchesFavoriteIdentifier($0, channel: channel) }
@@ -978,6 +1043,7 @@ final class ChannelStore: ObservableObject {
     }
 
     private func setupCloudFavoritesSync() {
+        guard CloudLibrarySyncService.hasUbiquityEntitlement else { return }
         cloudStore.synchronize()
         if let cloudFavorites = cloudStore.array(forKey: cloudFavoritesKey) as? [String] {
             favorites = Set(cloudFavorites)
@@ -1023,8 +1089,10 @@ final class ChannelStore: ObservableObject {
         favoriteOrder = values
         defaults.set(values, forKey: "favorites")
         defaults.set(values, forKey: "favoriteOrder")
-        cloudStore.set(values, forKey: cloudFavoritesKey)
-        cloudStore.synchronize()
+        if CloudLibrarySyncService.hasUbiquityEntitlement {
+            cloudStore.set(values, forKey: cloudFavoritesKey)
+            cloudStore.synchronize()
+        }
         markCloudLibraryChanged()
     }
 
@@ -1054,7 +1122,7 @@ final class ChannelStore: ObservableObject {
 
     private func makeCloudLibrarySnapshot() -> CloudLibrarySnapshot {
         return CloudLibrarySnapshot(
-            schemaVersion: 2,
+            schemaVersion: 3,
             modifiedAt: cloudLibraryModifiedAt,
             // Include the current remote playlist content as well as manually imported
             // playlists so a second device can display the same wall immediately.
@@ -1062,7 +1130,8 @@ final class ChannelStore: ObservableObject {
             favoriteOrder: normalizedFavoriteOrder(),
             deletedChannelIDs: deletedChannelIDs.sorted(),
             m3uPriorityOrder: m3uPriorityOrder,
-            remoteSyncSettings: remoteSyncSettings
+            remoteSyncSettings: remoteSyncSettings,
+            go2rtcChannels: go2rtcChannels
         )
     }
 
@@ -1080,16 +1149,20 @@ final class ChannelStore: ObservableObject {
         favorites = Set(snapshot.favoriteOrder)
         deletedChannelIDs = Set(snapshot.deletedChannelIDs)
         remoteSyncSettings = snapshot.remoteSyncSettings
+        go2rtcChannels = snapshot.go2rtcChannels
         cloudLibraryModifiedAt = snapshot.modifiedAt
 
         defaults.set(snapshot.favoriteOrder, forKey: "favorites")
         defaults.set(snapshot.favoriteOrder, forKey: "favoriteOrder")
         defaults.set(snapshot.deletedChannelIDs, forKey: "deletedChannelIDs")
         defaults.set(snapshot.m3uPriorityOrder, forKey: "m3uPriorityOrder")
+        Self.saveGo2RTCChannels(snapshot.go2rtcChannels, to: defaults, key: go2rtcChannelsKey)
         defaults.set(snapshot.modifiedAt, forKey: cloudLibraryModifiedAtKey)
         RemotePlaylistSyncLibrary.save(snapshot.remoteSyncSettings)
-        cloudStore.set(snapshot.favoriteOrder, forKey: cloudFavoritesKey)
-        cloudStore.synchronize()
+        if CloudLibrarySyncService.hasUbiquityEntitlement {
+            cloudStore.set(snapshot.favoriteOrder, forKey: cloudFavoritesKey)
+            cloudStore.synchronize()
+        }
         refreshImportedChannels()
     }
 
@@ -1354,5 +1427,21 @@ final class ChannelStore: ObservableObject {
         let li = priority.firstIndex(where: { lhs.name.hasPrefix($0) }) ?? priority.count
         let ri = priority.firstIndex(where: { rhs.name.hasPrefix($0) }) ?? priority.count
         return li == ri ? lhs.name < rhs.name : li < ri
+    }
+}
+
+
+// Bounded wait so a stalled CloudKit request cannot block the UI for long.
+private struct SyncTimeoutError: Error {}
+private func withTimeout<T>(_ seconds: TimeInterval, _ op: @escaping () async throws -> T) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        group.addTask { try await op() }
+        group.addTask {
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            throw SyncTimeoutError()
+        }
+        let result = try await group.next()!
+        group.cancelAll()
+        return result
     }
 }

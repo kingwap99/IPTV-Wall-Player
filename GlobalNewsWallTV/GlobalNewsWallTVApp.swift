@@ -7,6 +7,17 @@ import UIKit
 
 @main
 struct IPTVWallApp: App {
+    init() {
+        // Surface the exact reason of CloudKit's NSException on tvOS instead of a
+        // silent SIGABRT so device-side diagnosis can read it from preferences.
+        NSSetUncaughtExceptionHandler { exception in
+            let detail = exception.reason ?? "unknown"
+            let reason = exception.name.rawValue + ": " + detail
+            UserDefaults.standard.set(reason, forKey: "lastObjCException.v1")
+            UserDefaults.standard.synchronize()
+        }
+    }
+
     #if os(macOS)
     @NSApplicationDelegateAdaptor(MacAppDelegate.self) private var appDelegate
     #elseif os(iOS)
